@@ -1,0 +1,709 @@
+diff -crB ../temp/adapt_authoring/routes/lang/en.json routes/lang/en.json
+--- a/routes/lang/en.json
+++++ b/routes/lang/en.json
+***************
+*** 218,223 ****
+--- 218,224 ----
+    "app.searchtitleordescription": "Search title or description",
+    "app.filter": "Filter",
+    "app.filterbytags": "Filter by tags",
++   "app.notags": "No tags",
+    "app.filetypeother": "Other",
+    "app.filetypeimage": "Image",
+    "app.filetypeaudio": "Audio",
+diff -crB ../temp/adapt_authoring/frontend/src/modules/projects/index.js frontend/src/modules/projects/index.js
+--- a/frontend/src/modules/projects/index.js
+++++ b/frontend/src/modules/projects/index.js
+***************
+*** 5,11 ****
+    var ProjectsSidebarView = require('./views/projectsSidebarView');
+    var MyProjectCollection = require('./collections/myProjectCollection');
+    var SharedProjectCollection = require('./collections/sharedProjectCollection');
+-   var TagsCollection = require('core/collections/tagsCollection');
+  
+    Origin.on('router:dashboard', function(location, subLocation, action) {
+      Origin.trigger('editor:resetData');
+--- 5,10 ----
+***************
+*** 47,63 ****
+        }
+      ]);
+  
+!     var tagsCollection = new TagsCollection();
+! 
+!     tagsCollection.fetch({
+!       success: function() {
+!         Origin.sidebar.addView(new ProjectsSidebarView({ collection: tagsCollection }).$el);
+!         Origin.trigger('dashboard:loaded', { type: location || 'all' });
+!       },
+!       error: function() {
+!         console.log('Error occured getting the tags collection - try refreshing your page');
+!       }
+!     });
+    });
+  
+    Origin.on('dashboard:loaded', function (options) {
+--- 46,53 ----
+        }
+      ]);
+  
+!     Origin.sidebar.addView(new ProjectsSidebarView().$el);
+!     Origin.trigger('dashboard:loaded', { type: location || 'all' });
+    });
+  
+    Origin.on('dashboard:loaded', function (options) {
+diff -crB ../temp/adapt_authoring/frontend/src/modules/projects/less/projects.less frontend/src/modules/projects/less/projects.less
+--- a/frontend/src/modules/projects/less/projects.less
+++++ b/frontend/src/modules/projects/less/projects.less
+***************
+*** 67,82 ****
+          .project-details-tags {
+              margin-top:8px;
+          }
+-         .tag-container {
+-             display:none;
+-             position:absolute;
+-             width:100%;
+-             left:0;
+-             bottom:0px;
+-             padding:20px 0px;
+-             border-top:1px solid #eee;
+-             min-height: 119px;
+-         }
+      }
+  }
+  
+--- 67,72 ----
+diff -crB ../temp/adapt_authoring/frontend/src/modules/projects/templates/project.hbs frontend/src/modules/projects/templates/project.hbs
+--- a/frontend/src/modules/projects/templates/project.hbs
+++++ b/frontend/src/modules/projects/templates/project.hbs
+***************
+*** 41,49 ****
+  
+          {{#if tags.length}}
+          <div class="project-details-tags project-details-row tags">
+!           <div class="projects-details-tags-button">
+!             <button class="btn secondary-hollow projects-details-tags-button-show">{{t 'app.viewtags'}}</button>
+!           </div>
+            <div class="projects-details-value tag-container">
+              <ul class="items tags">
+              {{#each tags}}
+--- 41,47 ----
+  
+          {{#if tags.length}}
+          <div class="project-details-tags project-details-row tags">
+!           <div class="projects-details-label">{{t 'app.tags'}}</div>
+            <div class="projects-details-value tag-container">
+              <ul class="items tags">
+              {{#each tags}}
+***************
+*** 52,58 ****
+                </li>
+              {{/each}}
+              </ul>
+-             <button class="btn secondary-hollow projects-details-tags-button-hide">{{t 'app.hidetags'}}</button>
+            </div>
+          </div>
+          {{/if}}
+--- 50,55 ----
+diff -crB ../temp/adapt_authoring/frontend/src/modules/projects/templates/projects.hbs frontend/src/modules/projects/templates/projects.hbs
+--- a/frontend/src/modules/projects/templates/projects.hbs
+++++ b/frontend/src/modules/projects/templates/projects.hbs
+***************
+*** 1,6 ****
+  <div class="projects-inner">
+! 	<div class="no-projects display-none">
+! 		{{t 'app.noprojectstodisplay'}}
+! 	</div>
+    <ul class="projects-list clearfix grid-layout"></ul>
+  </div>
+--- 1,9 ----
+  <div class="projects-inner">
+!   <div class="projects-loading display-none">
+!     {{t 'app.loading'}}
+!   </div>
+!   <div class="no-projects display-none">
+!     {{t 'app.noprojectstodisplay'}}
+!   </div>
+    <ul class="projects-list clearfix grid-layout"></ul>
+  </div>
+diff -crB ../temp/adapt_authoring/frontend/src/modules/projects/templates/projectsSidebar.hbs frontend/src/modules/projects/templates/projectsSidebar.hbs
+--- a/frontend/src/modules/projects/templates/projectsSidebar.hbs
+++++ b/frontend/src/modules/projects/templates/projectsSidebar.hbs
+***************
+*** 39,46 ****
+          </div>
+        </div>
+  
+!       <button class="projects-sidebar-add-tag sidebar-filter-button action-secondary">
+!         <span class="projects-sidebar-add-tag-inner">{{t 'app.searchbytag'}}</span>
+!       </button>
+      </div>
+  </div>
+--- 39,54 ----
+          </div>
+        </div>
+  
+!       <div class="sidebar-row sidebar-tag-header sidebar-row-input">
+!         <div class="sidebar-tag-header-inner">
+!           <span>{{t 'app.filterbytags'}}</span>
+!         </div>
+!       </div>
+! 
+!       <div class="sidebar-row sidebar-tags-list sidebar-row-input">
+!         <div class="projects-sidebar-tags-list">
+!           {{!-- Tag checkboxes are rendered client-side by ProjectsSidebarView --}}
+!         </div>
+!       </div>
+      </div>
+  </div>
+diff -crB ../temp/adapt_authoring/frontend/src/modules/projects/views/projectsSidebarView.js frontend/src/modules/projects/views/projectsSidebarView.js
+--- a/frontend/src/modules/projects/views/projectsSidebarView.js
+++++ b/frontend/src/modules/projects/views/projectsSidebarView.js
+***************
+*** 2,7 ****
+--- 2,8 ----
+  define(function(require) {
+    var Origin = require('core/origin');
+    var SidebarItemView = require('modules/sidebar/views/sidebarItemView');
++   var Handlebars = require('handlebars');
+  
+    var ProjectsSidebarView = SidebarItemView.extend({
+      settings: {
+***************
+*** 14,31 ****
+        'click .projects-sidebar-my-courses': 'gotoMyCourses',
+        'click .projects-sidebar-shared-courses': 'gotoSharedCourses',
+        'click .sidebar-filter-clear': 'clearFilterInput',
+!       'click .projects-sidebar-tag': 'onFilterButtonClicked',
+!       'click .projects-sidebar-add-tag': 'onAddTagClicked',
+!       'click .projects-sidebar-row-filter': 'onFilterRemovedClicked',
+!       'keyup .projects-sidebar-filter-search-input': 'filterProjectsByTitle'
+      },
+  
+      postRender: function() {
+!       this.listenTo(Origin, 'sidebarFilter:filterByTags', this.filterProjectsByTags);
+!       this.listenTo(Origin, 'sidebarFilter:addTagToSidebar', this.addTagToSidebar);
+        this.listenTo(Origin, 'sidebar:update:ui', this.updateUI);
+        this.tags = [];
+!       this.usedTags = [];
+      },
+  
+      highlightSearchBox: function(){
+--- 15,29 ----
+        'click .projects-sidebar-my-courses': 'gotoMyCourses',
+        'click .projects-sidebar-shared-courses': 'gotoSharedCourses',
+        'click .sidebar-filter-clear': 'clearFilterInput',
+!       'keyup .projects-sidebar-filter-search-input': 'filterProjectsByTitle',
+!       'change .projects-sidebar-tag-checkbox': 'onTagCheckboxChanged'
+      },
+  
+      postRender: function() {
+!       this.listenTo(Origin, 'dashboard:tags:update', this.onTagsUpdate);
+        this.listenTo(Origin, 'sidebar:update:ui', this.updateUI);
+        this.tags = [];
+!       this.availableTags = [];
+      },
+  
+      highlightSearchBox: function(){
+***************
+*** 42,48 ****
+        this.highlightSearchBox();
+        if (userPreferences.tags) {
+          this.tags = userPreferences.tags;
+!         _.each(userPreferences.tags, this.addTagToSidebar, this);
+        }
+      },
+  
+--- 40,47 ----
+        this.highlightSearchBox();
+        if (userPreferences.tags) {
+          this.tags = userPreferences.tags;
+!         // When tags data arrives from the dashboard, checkboxes will be rendered
+!         // and selection restored using this.tags
+        }
+      },
+  
+***************
+*** 78,158 ****
+        this.highlightSearchBox();
+      },
+  
+!     onFilterButtonClicked: function(event) {
+!       event && event.preventDefault();
+!       // toggle filter
+!       $currentTarget = $(event.currentTarget);
+!       var filterType = $currentTarget.attr('data-tag');
+!       if ($currentTarget.hasClass('selected')) {
+!         $currentTarget.removeClass('selected');
+!         Origin.trigger('dashboard:sidebarFilter:remove', filterType);
+!       } else {
+!         $currentTarget.addClass('selected');
+!         Origin.trigger('dashboard:sidebarFilter:add', filterType);
+        }
+      },
+  
+!     onAddTagClicked: function(event) {
+!       event && event.preventDefault();
+!       var availableTags = [];
+!       // create an array of unique project tags
+!       this.collection.each(function(tag) {
+!         var availableTagsTitles = _.pluck(availableTags, 'title');
+!         var usedTagTitles = _.pluck(this.usedTags, 'title');
+!         if (!_.contains(availableTagsTitles, tag.get('title')) && !_.contains(usedTagTitles, tag.get('title'))) {
+!           availableTags.push(tag.attributes);
+!         }
+!       }, this);
+  
+!       Origin.trigger('sidebar:sidebarFilter:add', {
+!         title: Origin.l10n.t('app.filterbytags'),
+!         items: availableTags
+!       });
+      },
+  
+!     onTagClicked: function(event) {
+!       var tag = $(event.currentTarget).toggleClass('selected').attr('data-tag');
+!       this.filterProjectsByTags(tag);
+      },
+  
+!     filterProjectsByTags: function(tag) {
+!       // toggle tag
+!       if (_.findWhere(this.tags, { id: tag.id } )) {
+!         this.tags = _.reject(this.tags, function(tagItem) {
+!           return tagItem.id === tag.id;
+          });
+-       } else {
+-         this.tags.push(tag);
+-       }
+-       Origin.trigger('dashboard:dashboardSidebarView:filterByTags', this.tags);
+-     },
+- 
+-     addTagToSidebar: function(tag) {
+-       this.usedTags.push(tag);
+- 
+-       var template = Handlebars.templates['sidebarRowFilter'];
+-       var data = {
+-         rowClasses: 'sidebar-row-filter',
+-         buttonClasses:'projects-sidebar-row-filter',
+-         tag: tag
+-       };
+- 
+-       this.$('.projects-sidebar-add-tag').parent().after(template(data));
+-     },
+- 
+-     onFilterRemovedClicked: function(event) {
+-       var tag = {
+-         title: $(event.currentTarget).attr('data-title'),
+-         id: $(event.currentTarget).attr('data-id')
+-       }
+-       // Remove this tag from the usedTags
+-       this.usedTags = _.reject(this.usedTags, function(item) {
+-         return item.id === tag.id;
+        });
+! 
+!       this.filterProjectsByTags(tag);
+! 
+!       $(event.currentTarget).parent().remove();
+      }
+    }, {
+      template: 'projectsSidebar'
+--- 77,139 ----
+        this.highlightSearchBox();
+      },
+  
+!     onTagsUpdate: function(tags) {
+!       this.availableTags = tags || [];
+!       // If no saved selection, default to all tags selected so the view
+!       // initially shows the full set of courses.
+!       if (!this.tags || !this.tags.length) {
+!         this.tags = _.map(this.availableTags, function(tag) {
+!           return { id: tag.id, title: tag.title };
+!         });
+        }
++       this.renderTagCheckboxes();
+      },
+  
+!     renderTagCheckboxes: function() {
+!       var $list = this.$('.projects-sidebar-tags-list');
+!       if (!$list.length) return;
+! 
+!       $list.empty();
+! 
+!       var selectedIds = _.pluck(this.tags || [], 'id');
+! 
+!       _.each(this.availableTags, function(tag) {
+!         var id = tag.id;
+!         var title = tag.title || '';
+!         var count = tag.count || 0;
+!         var isChecked = _.contains(selectedIds, id);
+!         var escapedTitle = Handlebars.Utils.escapeExpression(title);
+! 
+!         var html = [
+!           '<div class="sidebar-tag">',
+!             '<label>',
+!               '<input type="checkbox" class="projects-sidebar-tag-checkbox" value="', id,
+!               '" data-title="', escapedTitle, '"', (isChecked ? ' checked="checked"' : ''), ' /> ',
+!               escapedTitle, ' (', count, ')',
+!             '</label>',
+!           '</div>'
+!         ].join('');
+  
+!         $list.append(html);
+!       }, this);
+      },
+  
+!     onTagCheckboxChanged: function(event) {
+!       event && event.preventDefault();
+!       this.updateSelectedTagsFromUI();
+      },
+  
+!     updateSelectedTagsFromUI: function() {
+!       var selected = [];
+!       this.$('.projects-sidebar-tag-checkbox:checked').each(function(index, el) {
+!         var $el = $(el);
+!         selected.push({
+!           id: $el.val(),
+!           title: $el.attr('data-title')
+          });
+        });
+!       this.tags = selected;
+!       Origin.trigger('dashboard:dashboardSidebarView:filterByTags', this.tags);
+      }
+    }, {
+      template: 'projectsSidebar'
+diff -crB ../temp/adapt_authoring/frontend/src/modules/projects/views/projectsView.js frontend/src/modules/projects/views/projectsView.js
+--- a/frontend/src/modules/projects/views/projectsView.js
+++++ b/frontend/src/modules/projects/views/projectsView.js
+***************
+*** 20,34 ****
+        this.settings.preferencesKey = 'dashboard';
+        this.initUserPreferences();
+        this.initEventListeners();
+!       this.initPaging();
+      },
+  
+      initEventListeners: function() {
+-       this._doLazyScroll = _.throttle(this.doLazyScroll, 250).bind(this);
+-       this._onResize = _.debounce(this.onResize, 250).bind(this);
+- 
+        this.listenTo(Origin, {
+!         'window:resize dashboard:refresh': this._onResize,
+          'dashboard:dashboardSidebarView:filterBySearch': function(text) { this.doFilter(text) },
+          'dashboard:dashboardSidebarView:filterByTags': function(tags) { this.doFilter(null, tags) },
+          'dashboard:sort:asc': function() { this.doSort('asc'); },
+--- 20,32 ----
+        this.settings.preferencesKey = 'dashboard';
+        this.initUserPreferences();
+        this.initEventListeners();
+!       // Load all matching projects in a single request (no infinite scroll)
+!       this.resetCollection(this.setViewToReady);
+      },
+  
+      initEventListeners: function() {
+        this.listenTo(Origin, {
+!         'dashboard:refresh': _.debounce(this.resetCollection.bind(this, this.setViewToReady), 250),
+          'dashboard:dashboardSidebarView:filterBySearch': function(text) { this.doFilter(text) },
+          'dashboard:dashboardSidebarView:filterByTags': function(tags) { this.doFilter(null, tags) },
+          'dashboard:sort:asc': function() { this.doSort('asc'); },
+***************
+*** 41,48 ****
+        }, this);
+  
+        this.listenTo(this.collection, 'add', this.appendProjectItem);
+- 
+-       $('.contentPane').on('scroll', this._doLazyScroll);
+      },
+  
+      initUserPreferences: function() {
+--- 39,44 ----
+***************
+*** 70,97 ****
+        return prefs;
+      },
+  
+-     initPaging: function() {
+-       if(this.resizeTimer) {
+-         clearTimeout(this.resizeTimer);
+-         this.resizeTimer = -1;
+-       }
+-       // we need to load one course first to check page size
+-       this.pageSize = 1;
+-       this.resetCollection(function(collection) {
+-         var containerHeight = $(window).height()-this.$el.offset().top;
+-         var containerWidth = this.$('.projects-inner').width();
+-         var itemHeight = $('.project-list-item').outerHeight(true);
+-         var itemWidth = $('.project-list-item').outerWidth(true);
+-         var columns = Math.floor(containerWidth/itemWidth);
+-         var rows = Math.floor(containerHeight/itemHeight);
+-         // columns stack nicely, but need to add extra row if it's not a clean split
+-         if((containerHeight % itemHeight) > 0) rows++;
+-         this.pageSize = columns*rows;
+-         // need another reset to get the actual pageSize number of items
+-         this.resetCollection(this.setViewToReady);
+-       }.bind(this));
+-     },
+- 
+      getProjectsContainer: function() {
+        return this.$('.projects-list');
+      },
+--- 66,71 ----
+***************
+*** 115,162 ****
+  
+      resetCollection: function(cb) {
+        this.emptyProjectsContainer();
+!       this.fetchCount = 0;
+!       this.shouldStopFetches = false;
+        this.collection.reset();
+        this.fetchCollection(cb);
+      },
+  
+      fetchCollection: function(cb) {
+-       if(this.shouldStopFetches) {
+-         return;
+-       }
+-       this.isCollectionFetching = true;
+- 
+        this.collection.fetch({
+          data: {
+-           search: _.extend(this.search, { tags: { $all: this.tags } }),
+            operators : {
+-             skip: this.fetchCount,
+-             limit: this.pageSize,
+              sort: this.sort,
+              collation: { locale: navigator.language.substring(0, 2) }
+            }
+          },
+          success: function(collection, response) {
+!           this.isCollectionFetching = false;
+!           this.fetchCount += response.length;
+!           // stop further fetching if this is the last page
+!           if(response.length < this.pageSize) this.shouldStopFetches = true;
+  
+-           this.$('.no-projects').toggleClass('display-none', this.fetchCount > 0);
+            if(typeof cb === 'function') cb(collection);
+          }.bind(this)
+        });
+      },
+  
+!     doLazyScroll: function(e) {
+!       if(this.isCollectionFetching) {
+!         return;
+!       }
+!       var $el = $(e.currentTarget);
+!       var pxRemaining = this.getProjectsContainer().height() - ($el.scrollTop() + $el.height());
+!       // we're at the bottom, fetch more
+!       if (pxRemaining <= 0) this.fetchCollection();
+      },
+  
+      doLayout: function(layout) {
+--- 89,220 ----
+  
+      resetCollection: function(cb) {
+        this.emptyProjectsContainer();
+!       this.showLoading();
+        this.collection.reset();
+        this.fetchCollection(cb);
+      },
+  
+      fetchCollection: function(cb) {
+        this.collection.fetch({
+          data: {
+            operators : {
+              sort: this.sort,
+              collation: { locale: navigator.language.substring(0, 2) }
+            }
+          },
+          success: function(collection, response) {
+!           this.hideLoading();
+!           this.updateAvailableTags();
+! 
+!           // If user has already applied a text or tag filter, reapply it.
+!           // Otherwise, leave the initially rendered list as-is for faster first paint.
+!           var hasFilters = (this.filterText && this.filterText.length) || (this.tags && this.tags.length);
+!           if (hasFilters) {
+!             this.applyFilters();
+!           } else {
+!             this.$('.no-projects').toggleClass('display-none', collection.length > 0);
+!           }
+  
+            if(typeof cb === 'function') cb(collection);
++         }.bind(this),
++         error: function() {
++           this.hideLoading();
+          }.bind(this)
+        });
+      },
+  
+!     updateAvailableTags: function() {
+!       var tagMap = {};
+!       var noTagCount = 0;
+! 
+!       this.collection.each(function(model) {
+!         var tags = model.get('tags') || [];
+!         if (!tags.length) {
+!           noTagCount++;
+!         }
+!         _.each(tags, function(tag) {
+!           var id = tag._id || tag.id;
+!           if (!id) return;
+!           if (!tagMap[id]) {
+!             tagMap[id] = {
+!               id: id,
+!               title: tag.title || '',
+!               count: 0
+!             };
+!           }
+!           tagMap[id].count++;
+!         });
+!       });
+! 
+!       var tagsArray = _.values(tagMap);
+! 
+!       // Special pseudo-tag for courses with no tags
+!       tagsArray.push({
+!         id: '__none__',
+!         title: Origin.l10n.t('app.notags') || 'No tags',
+!         count: noTagCount
+!       });
+! 
+!       Origin.trigger('dashboard:tags:update', tagsArray);
+!     },
+! 
+!     /**
+!      * Client-side filtering of projects (DataTables-style global search):
+!      * - text search matches course title, creator name, and tag titles
+!      * - tag filter (from sidebar) is applied in the same pass
+!      */
+!     applyFilters: function() {
+!       var text = (this.filterText || '').toLowerCase();
+!       var selectedIds = this.tags || [];
+!       var NONE_ID = '__none__';
+!       var wantNoTags = _.contains(selectedIds, NONE_ID);
+!       var normalTagIds = _.filter(selectedIds, function(id) { return id !== NONE_ID; });
+! 
+!       var filtered = this.collection.filter(function(model) {
+!         // Tag filter: union of selected tags and "no tags" pseudo-tag
+!         if (normalTagIds.length || wantNoTags) {
+!           var courseTags = model.get('tags') || [];
+!           var courseTagIds = _.pluck(courseTags, '_id');
+! 
+!           var matchesNormal = normalTagIds.length
+!             ? _.some(normalTagIds, function(id) {
+!                 return _.contains(courseTagIds, id);
+!               })
+!             : false;
+! 
+!           var matchesNoTags = wantNoTags && courseTagIds.length === 0;
+! 
+!           if (!matchesNormal && !matchesNoTags) return false;
+!         }
+! 
+!         if (!text) return true;
+! 
+!         var title = (model.get('title') || '').toString().toLowerCase();
+!         var creatorName = (model.get('creatorName') || '').toString().toLowerCase();
+!         var tags = model.get('tags') || [];
+!         var tagMatch = _.some(tags, function(tag) {
+!           return (tag.title || '').toString().toLowerCase().indexOf(text) !== -1;
+!         });
+! 
+!         return title.indexOf(text) !== -1 ||
+!                creatorName.indexOf(text) !== -1 ||
+!                tagMatch;
+!       });
+! 
+!       this.emptyProjectsContainer();
+!       _.each(filtered, function(model) {
+!         this.appendProjectItem(model);
+!       }, this);
+! 
+!       this.$('.no-projects').toggleClass('display-none', filtered.length > 0);
+!     },
+! 
+!     showLoading: function() {
+!       this.$('.projects-loading').removeClass('display-none');
+!     },
+! 
+!     hideLoading: function() {
+!       this.$('.projects-loading').addClass('display-none');
+      },
+  
+      doLayout: function(layout) {
+***************
+*** 181,209 ****
+            this.sort = { title: 1 };
+        }
+        this.setUserPreference('sort', sort);
+!       if(fetch !== false) this.resetCollection();
+      },
+  
+      doFilter: function(text, tags, fetch) {
+        text = text || '';
+        this.filterText = text;
+-       this.search = this.convertFilterTextToPattern(text);
+        this.setUserPreference('search', text, true);
+  
+        tags = tags || [];
+        this.tags = _.pluck(tags, 'id');
+        this.setUserPreference('tags', tags, true);
+  
+!       if(fetch !== false) this.resetCollection();
+!     },
+! 
+!     onResize: function() {
+!       this.initPaging();
+      },
+  
+      remove: function() {
+-       $('.contentPane').off('scroll', this._doLazyScroll);
+- 
+        OriginView.prototype.remove.apply(this, arguments);
+      }
+  
+--- 239,283 ----
+            this.sort = { title: 1 };
+        }
+        this.setUserPreference('sort', sort);
+!       if(fetch === false) return;
+! 
+!       // Client-side sort of the already-fetched collection
+!       switch(sort) {
+!         case 'updated':
+!           this.collection.comparator = function(model) {
+!             // newer first
+!             return -new Date(model.get('updatedAt')).getTime();
+!           };
+!           break;
+!         case 'desc':
+!           this.collection.comparator = function(model) {
+!             return model.get('title') ? model.get('title').toString().toLowerCase() * -1 : '';
+!           };
+!           break;
+!         case 'asc':
+!         default:
+!           this.collection.comparator = function(model) {
+!             return model.get('title') ? model.get('title').toString().toLowerCase() : '';
+!           };
+!       }
+! 
+!       this.collection.sort();
+!       this.applyFilters();
+      },
+  
+      doFilter: function(text, tags, fetch) {
+        text = text || '';
+        this.filterText = text;
+        this.setUserPreference('search', text, true);
+  
+        tags = tags || [];
+        this.tags = _.pluck(tags, 'id');
+        this.setUserPreference('tags', tags, true);
+  
+!       if(fetch !== false) this.applyFilters();
+      },
+  
+      remove: function() {
+        OriginView.prototype.remove.apply(this, arguments);
+      }
+  

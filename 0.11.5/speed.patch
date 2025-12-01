@@ -1,0 +1,292 @@
+diff -crB ../temp/adapt_authoring/frontend/src/core/collections/contentCollection.js frontend/src/core/collections/contentCollection.js
+*** ../temp/adapt_authoring/frontend/src/core/collections/contentCollection.js	2025-12-01 12:11:16.079505779 +0000
+--- frontend/src/core/collections/contentCollection.js	2025-12-01 11:28:57.255500938 +0000
+***************
+*** 15,20 ****
+--- 15,38 ----
+        this.on('reset', this.loadedData, this);
+      },
+  
++     fetch: function(options) {
++       options = options || {};
++       var cache = Origin.editor && Origin.editor.pageStructureCache;
++ 
++       // If we have a page-structure cache (editor page view) and this collection
++       // matches one of the cached child types with a known parentId, satisfy
++       // the fetch from cache instead of hitting the API.
++       if (cache && this._parentId && cache[this._type] && cache[this._type][this._parentId]) {
++         this.reset(cache[this._type][this._parentId]);
++         if (options.success) {
++           options.success(this);
++         }
++         return;
++       }
++ 
++       return Backbone.Collection.prototype.fetch.call(this, options);
++     },
++ 
+      buildQuery: function() {
+        var query = '';
+        if(this._courseId) {
+diff -crB ../temp/adapt_authoring/frontend/src/core/models/contentModel.js frontend/src/core/models/contentModel.js
+*** ../temp/adapt_authoring/frontend/src/core/models/contentModel.js	2025-12-01 12:11:16.079505779 +0000
+--- frontend/src/core/models/contentModel.js	2025-12-01 11:25:45.315471405 +0000
+***************
+*** 22,28 ****
+--- 22,50 ----
+        var childTypes = _.isArray(this._childTypes) ? this._childTypes : [this._childTypes];
+        // has to be a plain old array because we may have multiple model types
+        var children = [];
++       var cache = Origin.editor && Origin.editor.pageStructureCache;
++ 
+        Helpers.forParallelAsync(childTypes, _.bind(function(childType, index, done) {
++         var usedCache = false;
++ 
++         // Try to satisfy from cache first (used by the editor page view)
++         if (cache) {
++           // cache keys are singular type names matching content collections
++           var bucket = cache[childType];
++           if (bucket) {
++             var cachedChildren = bucket[this.get('_id')] || [];
++             if (cachedChildren.length) {
++               children = children.concat(cachedChildren);
++               usedCache = true;
++             }
++           }
++         }
++ 
++         if (usedCache) {
++           return done();
++         }
++ 
++         // Fallback to normal API call
+          (new ContentCollection(null, {
+            _type: childType,
+            _parentId: this.get('_id')
+diff -crB ../temp/adapt_authoring/frontend/src/modules/editor/global/views/editorView.js frontend/src/modules/editor/global/views/editorView.js
+*** ../temp/adapt_authoring/frontend/src/modules/editor/global/views/editorView.js	2025-12-01 12:11:16.155505805 +0000
+--- frontend/src/modules/editor/global/views/editorView.js	2025-12-01 11:25:42.091471800 +0000
+***************
+*** 38,43 ****
+--- 38,45 ----
+        this.currentCourseId = Origin.editor.data.course.get('_id');
+        this.currentCourse = Origin.editor.data.course;
+        this.currentPageId = options.currentPageId;
++       // clear any cached page structure when (re)rendering editor
++       Origin.editor.pageStructureCache = null;
+  
+        this.listenTo(Origin, {
+          'editorView:refreshView': this.setupEditor,
+***************
+*** 338,357 ****
+      },
+  
+      renderEditorPage: function() {
+!       (new ContentObjectModel({
+!         _id: this.currentPageId
+!       })).fetch({
+!         success: function(model) {
+!           var view = new EditorPageView({ model: model });
+!           this.$('.editor-inner').html(view.$el);
+!         },
+!         error: function() {
+            Origin.Notify.alert({
+              type: 'error',
+!             text: 'app.errorfetchingdata'
+            });
+          }
+!       });
+      },
+  
+      /**
+--- 340,398 ----
+      },
+  
+      renderEditorPage: function() {
+!       var pageId = this.currentPageId;
+!       var url = 'api/content/pageStructure/' + pageId;
+! 
+!       $.get(url, _.bind(function(data) {
+!         if (!data || data.success === false || !data.page) {
+            Origin.Notify.alert({
+              type: 'error',
+!             text: Origin.l10n.t('app.errorfetchingdata')
+            });
++           return;
+          }
+! 
+!         // Build models and cache by parentId for fast lookup in fetchChildren
+!         var cache = {
+!           article: {},
+!           block: {},
+!           component: {}
+!         };
+! 
+!         var pageModel = new ContentObjectModel(data.page);
+! 
+!         _.each(data.articles || [], function(articleData) {
+!           var articleModel = new ArticleModel(articleData);
+!           var parentId = articleModel.get('_parentId');
+!           if (!cache.article[parentId]) cache.article[parentId] = [];
+!           cache.article[parentId].push(articleModel);
+!         });
+! 
+!         _.each(data.blocks || [], function(blockData) {
+!           var blockModel = new BlockModel(blockData);
+!           var parentId = blockModel.get('_parentId');
+!           if (!cache.block[parentId]) cache.block[parentId] = [];
+!           cache.block[parentId].push(blockModel);
+!         });
+! 
+!         _.each(data.components || [], function(componentData) {
+!           var componentModel = new ComponentModel(componentData);
+!           var parentId = componentModel.get('_parentId');
+!           if (!cache.component[parentId]) cache.component[parentId] = [];
+!           cache.component[parentId].push(componentModel);
+!         });
+! 
+!         // Expose cache for ContentModel.fetchChildren
+!         Origin.editor.pageStructureCache = cache;
+! 
+!         var view = new EditorPageView({ model: pageModel });
+!         this.$('.editor-inner').html(view.$el);
+!       }, this)).fail(_.bind(function() {
+!         Origin.Notify.alert({
+!           type: 'error',
+!           text: Origin.l10n.t('app.errorfetchingdata')
+!         });
+!       }, this));
+      },
+  
+      /**
+diff -crB ../temp/adapt_authoring/lib/contentmanager.js lib/contentmanager.js
+*** ../temp/adapt_authoring/lib/contentmanager.js	2025-12-01 12:11:16.183505814 +0000
+--- lib/contentmanager.js	2025-12-01 11:25:27.007473760 +0000
+***************
+*** 766,771 ****
+--- 766,890 ----
+      }
+    });
+  
++   // retrieve full page structure (page -> articles -> blocks -> components)
++   rest.get('/content/pageStructure/:id', function(req, res, next) {
++     var pageId = req.params.id;
++     var user = app.usermanager.getCurrentUser();
++     var tenantId = user.tenant && user.tenant._id;
++ 
++     if (!pageId || 'string' !== typeof pageId) {
++       res.statusCode = 400;
++       return res.json({ success: false, message: 'id is required' });
++     }
++ 
++     var page;
++     var articles = [];
++     var blocks = [];
++     var components = [];
++ 
++     database.getDatabase(function(error, db) {
++       if (error) {
++         logger.log('error', error);
++         res.statusCode = 500;
++         return res.json({ success: false, message: 'Unable to connect to database' });
++       }
++ 
++       async.series([
++         // Retrieve the page contentobject
++         function(callback) {
++           db.retrieve('contentobject', { _id: pageId }, function(err, results) {
++             if (err) {
++               return callback(err);
++             }
++             if (!results || results.length !== 1) {
++               return callback(new Error('Page not found'));
++             }
++             page = results[0]._doc;
++ 
++             // Check course-level permission for this page
++             helpers.hasCoursePermission('retrieve', user._id, tenantId, page, function(err2, isAllowed) {
++               if (err2) {
++                 return callback(err2);
++               }
++               if (!isAllowed) {
++                 return callback(new ContentPermissionError());
++               }
++               callback();
++             });
++           });
++         },
++         // Retrieve articles for the page
++         function(callback) {
++           db.retrieve('article', { _parentId: page._id }, function(err, results) {
++             if (err) {
++               return callback(err);
++             }
++             async.eachSeries(results, function(result, cb) {
++               articles.push(result._doc);
++               cb();
++             }, callback);
++           });
++         },
++         // Retrieve blocks for all articles
++         function(callback) {
++           if (!articles.length) {
++             return callback();
++           }
++           async.eachSeries(articles, function(article, cb) {
++             db.retrieve('block', { _parentId: article._id }, function(err, results) {
++               if (err) {
++                 return cb(err);
++               }
++               async.eachSeries(results, function(result, cb2) {
++                 blocks.push(result._doc);
++                 cb2();
++               }, cb);
++             });
++           }, callback);
++         },
++         // Retrieve components for all blocks
++         function(callback) {
++           if (!blocks.length) {
++             return callback();
++           }
++           async.eachSeries(blocks, function(block, cb) {
++             db.retrieve('component', { _parentId: block._id }, function(err, results) {
++               if (err) {
++                 return cb(err);
++               }
++               async.eachSeries(results, function(result, cb2) {
++                 components.push(result._doc);
++                 cb2();
++               }, cb);
++             });
++           }, callback);
++         }
++       ], function(err) {
++         if (err) {
++           logger.log('error', err);
++           if (err instanceof ContentPermissionError) {
++             res.statusCode = 403;
++           } else {
++             res.statusCode = 500;
++           }
++           return res.json({ success: false, message: err.message || 'Error retrieving page structure' });
++         }
++ 
++         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
++         res.setHeader('Pragma', 'no-cache');
++         res.setHeader('Expires', '0');
++         res.statusCode = 200;
++         return res.json({
++           success: true,
++           page: page,
++           articles: articles,
++           blocks: blocks,
++           components: components
++         });
++       });
++     }, configuration.getConfig('dbName'));
++   });
++ 
+    // creation
+    rest.post('/content/:type', function (req, res, next) {
+      var type = req.params.type;
