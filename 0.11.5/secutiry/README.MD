@@ -26,17 +26,19 @@ Added npm `overrides` to force safe versions of vulnerable transitive dependenci
 
 ```json
 "overrides": {
-  "braces": "^3.0.3",
-  "json-schema-mapper": {
-    "underscore": "^1.13.6"
-  },
-  "request": {
-    "form-data": "^4.0.0",
-    "tough-cookie": "^4.1.3"
-  },
-  "archetype": {
-    "mpath": "^0.9.0"
-  }
+    "braces": "^3.0.3",
+    "json-schema-mapper": {
+      "underscore": "^1.13.6"
+    },
+    "request": {
+      "form-data": "^4.0.0",
+      "tough-cookie": "^4.1.3"
+    },
+    "lodash.set": "npm:lodash@^4.17.21",
+    "archetype": {
+      "lodash.set": "npm:lodash@^4.3.2",
+      "mpath": "^0.9.0"
+    }
 }
 ```
 
@@ -141,19 +143,35 @@ store: new MongoStore({
 
 ## Installation Instructions
 
-After applying these changes:
-
-1. **Delete `node_modules` and `package-lock.json`:**
+1. **Backup existing files (advisable):**
+   Before applying the patch, create backups of the files that will be modified:
    ```bash
+   cp package.json package.json.backup
+   cp lib/dml/mongoose/index.js lib/dml/mongoose/index.js.backup
+   cp lib/application.js lib/application.js.backup
+   ```
+
+2. **Copy the patched files over the existing ones:**
+   Copy the patched versions from this directory to your Adapt Authoring Tool installation:
+   ```bash
+   cp package.json /path/to/adapt-authoring/package.json
+   cp lib/dml/mongoose/index.js /path/to/adapt-authoring/lib/dml/mongoose/index.js
+   cp lib/application.js /path/to/adapt-authoring/lib/application.js
+   ```
+   *(Replace `/path/to/adapt-authoring/` with your actual installation path)*
+
+3. **Delete `node_modules` and `package-lock.json`:**
+   ```bash
+   cd /path/to/adapt-authoring
    rm -rf node_modules package-lock.json
    ```
 
-2. **Install dependencies:**
+4. **Install dependencies:**
    ```bash
    npm install
    ```
 
-3. **Restart the server:**
+5. **Restart the server:**
    ```bash
    node server.js
    ```
@@ -195,4 +213,3 @@ If issues occur, to rollback:
   - GHSA-cf4h-3jhx-xvhq (underscore)
   - GHSA-fjxv-7rqg-78g4 (form-data)
   - GHSA-g95f-p29q-9xw4, GHSA-grv7-fg5c-xmjg (braces)
-
