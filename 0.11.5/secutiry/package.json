@@ -1,0 +1,109 @@
+{
+  "name": "adapt_authoring",
+  "version": "0.11.5",
+  "license": "GPL-3.0",
+  "description": "A server-based user interface for authoring eLearning courses using the Adapt Framework.",
+  "keywords": [
+    "adapt",
+    "authoring"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adaptlearning/adapt_authoring.git"
+  },
+  "main": "index",
+  "engines": {
+    "node": "16 || 18"
+  },
+  "scripts": {
+    "test": "grunt test",
+    "create-migration": "npx migrate-mongo create -f conf/migrations.js"
+  },
+  "dependencies": {
+    "@babel/core": "^7.19.6",
+    "@babel/preset-env": "^7.19.4",
+    "archiver": "^3.1.1",
+    "async": "^3.2.3",
+    "bcrypt-nodejs": "0.0.3",
+    "body-parser": "^1.20.1",
+    "bower": "^1.8.14",
+    "bytes": "^3.1.2",
+    "chalk": "^2.4.2",
+    "compression": "^1.7.4",
+    "connect-mongodb-session": "^2.4.1",
+    "consolidate": "^0.15.1",
+    "cookie-parser": "^1.4.6",
+    "email-templates": "^12.0.3",
+    "errorhandler": "^1.5.1",
+    "express": "^4.18.2",
+    "express-session": "^1.17.2",
+    "ffmpeg-static": "^2.6.0",
+    "ffprobe": "^1.1.2",
+    "ffprobe-static": "^3.0.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "formidable": "^1.2.6",
+    "fs-extra": "^8.1.0",
+    "glob": "^7.2.0",
+    "grunt": "^1.4.1",
+    "grunt-babel": "^8.0.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-handlebars": "^2.0.0",
+    "grunt-contrib-requirejs": "^1.0.0",
+    "grunt-mocha-test": "^0.13.3",
+    "handlebars": "^4.7.7",
+    "handlebars-form-helpers": "^0.1.4",
+    "hbs": "^4.2.0",
+    "inquirer": "^8.2.2",
+    "jshint-stylish": "^2.2.1",
+    "json-schema-mapper": "0.0.2",
+    "junk": "^3.1.0",
+    "less": "^3.13.1",
+    "log-update": "^4.0.0",
+    "matchdep": "^1.0.0",
+    "method-override": "^3.0.0",
+    "migrate-mongo": "^9.0.0",
+    "mime": "^2.6.0",
+    "moment": "^2.29.4",
+    "mongodb-uri": "^0.9.7",
+    "mongoose": "^6.13.0",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.2",
+    "needle": "^2.9.1",
+    "node-polyglot": "^2.4.2",
+    "nodemailer": "^7.0.11",
+    "optimist": "^0.5.2",
+    "passport": "^0.6.0",
+    "passport-local": "^1.0.0",
+    "request": "^2.88.0",
+    "semver": "^6.3.0",
+    "serve-favicon": "^2.5.0",
+    "traverse": "^0.6.7",
+    "underscore": "^1.13.2",
+    "unzipper": "^0.10.11",
+    "winston": "^3.7.2",
+    "yauzl": "^2.10.0"
+  },
+  "overrides": {
+    "braces": "^3.0.3",
+    "json-schema-mapper": {
+      "underscore": "^1.13.6"
+    },
+    "request": {
+      "form-data": "^4.0.0",
+      "tough-cookie": "^4.1.3"
+    },
+    "lodash.set": "npm:lodash@^4.17.21",
+    "archetype": {
+      "lodash.set": "npm:lodash@^4.3.2",
+      "mpath": "^0.9.0"
+    }
+  },
+  "devDependencies": {
+    "mocha": "^11.7.5",
+    "mocha-multi": "^1.1.6",
+    "mocha-simple-html-reporter": "^1.1.0",
+    "mongodb": "^4.10.0",
+    "should": "^13.2.3",
+    "supertest": "^4.0.2"
+  }
+}
